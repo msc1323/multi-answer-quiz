@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multi-answer Quiz</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --surface: #ffffff;
+      --surface-2: #f8fafc;
+      --text: #172033;
+      --muted: #64748b;
+      --border: #dbe2ec;
+      --primary: #4f46e5;
+      --primary-2: #4338ca;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --warning: #d97706;
+      --shadow: 0 18px 50px rgba(15, 23, 42, .08);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at top left, #eef2ff 0, transparent 32%), var(--bg);
+      min-height: 100vh;
+    }
+    button, .file-label { font: inherit; }
+    button, .file-label {
+      border: 1px solid var(--border); background: var(--surface); color: var(--text);
+      padding: 11px 15px; border-radius: 12px; font-weight: 700; cursor: pointer;
+      transition: .18s ease; font-size: 14px;
+    }
+    button:hover, .file-label:hover { transform: translateY(-1px); border-color: #b8c3d4; }
+    button:disabled { cursor: not-allowed; opacity: .55; transform: none; }
+    button.primary { background: var(--primary); border-color: var(--primary); color: white; }
+    button.primary:hover:not(:disabled) { background: var(--primary-2); border-color: var(--primary-2); }
+    button.success { background: var(--success); border-color: var(--success); color: white; }
+    button.danger { color: var(--danger); }
+    button.ghost { background: transparent; }
+    .app { max-width: 1180px; margin: 0 auto; padding: 28px 20px 48px; }
+    header { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 22px; }
+    .brand h1 { margin: 0 0 4px; font-size: 28px; letter-spacing: -.03em; }
+    .brand p { margin: 0; color: var(--muted); }
+    .toolbar { display: flex; gap: 10px; flex-wrap: wrap; }
+    .layout { display: grid; grid-template-columns: 1.25fr .75fr; gap: 20px; }
+    .card {
+      background: rgba(255,255,255,.94); border: 1px solid rgba(219,226,236,.9); border-radius: var(--radius);
+      box-shadow: var(--shadow); padding: 22px;
+    }
+    .card h2 { margin: 0 0 16px; font-size: 18px; }
+    .section-title { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin-bottom: 14px; }
+    .section-title h2 { margin: 0; }
+    label.field { display: block; font-weight: 800; margin-bottom: 7px; font-size: 14px; }
+    input[type="text"], textarea, select {
+      width: 100%; border: 1px solid var(--border); border-radius: 12px; padding: 12px 13px;
+      font: inherit; color: var(--text); background: white; outline: none;
+    }
+    input[type="text"]:focus, textarea:focus, select:focus { border-color: #8b83f5; box-shadow: 0 0 0 4px rgba(79,70,229,.10); }
+    textarea { min-height: 112px; resize: vertical; }
+    .field-wrap { margin-bottom: 18px; }
+    .answers { display: grid; gap: 10px; }
+    .answer-row {
+      display: grid; grid-template-columns: 34px 1fr 90px 42px; gap: 10px; align-items: center;
+      background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; padding: 10px;
+    }
+    .answer-row.correct { border-color: rgba(22,163,74,.38); background: #f0fdf4; }
+    .answer-index {
+      width: 30px; height: 30px; display: grid; place-items: center; border-radius: 9px;
+      background: #e8edf5; color: #475569; font-weight: 900; font-size: 13px;
+    }
+    .answer-row.correct .answer-index { background: #dcfce7; color: var(--success); }
+    .correct-toggle { display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--muted); font-size: 12px; font-weight: 800; }
+    .correct-toggle input { width: 18px; height: 18px; accent-color: var(--success); }
+    .remove { padding: 9px; min-width: 40px; color: #64748b; }
+    .hint { margin: 7px 0 0; color: var(--muted); font-size: 12px; }
+    .actions { display: flex; gap: 9px; flex-wrap: wrap; }
+    .quiz-list { display: grid; gap: 10px; max-height: 560px; overflow: auto; }
+    .question-item {
+      border: 1px solid var(--border); border-radius: 14px; padding: 14px; background: var(--surface-2); cursor: pointer;
+    }
+    .question-item.active { border-color: #9c96f7; background: #f5f3ff; }
+    .question-item .q { font-weight: 800; line-height: 1.35; }
+    .question-item .meta { color: var(--muted); font-size: 12px; margin-top: 6px; }
+    .empty { color: var(--muted); border: 1px dashed var(--border); padding: 20px; border-radius: 14px; text-align: center; }
+    .import-box { display: grid; gap: 10px; }
+    input[type="file"] { display: none; }
+    .file-label { display: inline-flex; align-items: center; justify-content: center; width: fit-content; }
+    .stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 18px; }
+    .stat { border: 1px solid var(--border); padding: 13px; border-radius: 14px; background: var(--surface-2); }
+    .stat b { display: block; font-size: 21px; }
+    .stat span { color: var(--muted); font-size: 12px; }
+    .preview { border: 1px solid var(--border); border-radius: 16px; overflow: hidden; background: white; }
+    .preview-head { padding: 15px 16px; border-bottom: 1px solid var(--border); font-weight: 800; }
+    .preview-body { padding: 16px; }
+    .preview-question { font-size: 18px; font-weight: 900; line-height: 1.4; margin-bottom: 14px; }
+    .preview-option { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 9px; }
+    .preview-option input { width: 18px; height: 18px; accent-color: var(--primary); }
+    .import-format { font-size: 12px; line-height: 1.55; color: var(--muted); background: #f8fafc; border-radius: 12px; padding: 12px; border: 1px solid var(--border); }
+    .toast {
+      position: fixed; bottom: 20px; right: 20px; max-width: 360px; padding: 13px 16px; border-radius: 12px;
+      background: #172033; color: white; box-shadow: var(--shadow); opacity: 0; transform: translateY(12px); pointer-events: none; transition: .25s ease;
+      font-size: 14px; z-index: 50;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .small { font-size: 12px; color: var(--muted); }
+
+    /* Game mode */
+    .game-screen { display: none; }
+    .game-screen.active { display: block; }
+    .editor-screen.hidden { display: none; }
+    .game-shell { max-width: 900px; margin: 24px auto 0; }
+    .game-top { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 14px; }
+    .game-progress-wrap { flex: 1; }
+    .game-progress-label { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 13px; font-weight: 800; margin-bottom: 7px; }
+    .progress-bar { height: 9px; border-radius: 999px; background: #e7ebf1; overflow: hidden; }
+    .progress-bar > div { height: 100%; width: 0%; background: var(--primary); transition: width .25s ease; }
+    .score-chip { border: 1px solid var(--border); border-radius: 999px; padding: 9px 13px; font-weight: 900; background: white; white-space: nowrap; }
+    .game-card { padding: 30px; }
+    .game-question { font-size: clamp(24px, 4vw, 36px); line-height: 1.2; font-weight: 950; letter-spacing: -.03em; margin: 0 0 12px; }
+    .game-note { color: var(--muted); margin: 0 0 24px; }
+    .game-options { display: grid; gap: 12px; }
+    .game-option {
+      display: flex; align-items: center; gap: 14px; padding: 16px 18px; border: 2px solid var(--border); border-radius: 16px;
+      background: white; cursor: pointer; transition: .18s ease; user-select: none;
+    }
+    .game-option:hover { border-color: #a9a2fb; background: #faf9ff; }
+    .game-option.selected { border-color: var(--primary); background: #f5f3ff; }
+    .game-option input { width: 20px; height: 20px; accent-color: var(--primary); flex: 0 0 auto; }
+    .game-option .option-text { font-size: 17px; line-height: 1.35; font-weight: 700; }
+    .game-option.correct { border-color: rgba(22,163,74,.7); background: #f0fdf4; }
+    .game-option.wrong { border-color: rgba(220,38,38,.55); background: #fef2f2; }
+    .game-option.missed { border-color: rgba(22,163,74,.38); background: #f7fff9; }
+    .game-feedback { margin-top: 18px; padding: 14px 16px; border-radius: 14px; display: none; line-height: 1.45; }
+    .game-feedback.show { display: block; }
+    .game-feedback.good { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+    .game-feedback.bad { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+    .game-actions { display: flex; justify-content: space-between; gap: 10px; margin-top: 24px; flex-wrap: wrap; }
+    .game-actions-right { display: flex; gap: 9px; flex-wrap: wrap; margin-left: auto; }
+    .result-card { text-align: center; padding: 42px 30px; }
+    .result-score { font-size: clamp(48px, 9vw, 86px); font-weight: 950; line-height: 1; margin: 15px 0 10px; letter-spacing: -.06em; }
+    .result-label { color: var(--muted); font-size: 18px; }
+    .result-message { margin: 22px auto; max-width: 580px; color: var(--muted); line-height: 1.55; }
+    .result-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 620px; margin: 25px auto; }
+    .result-stat { border: 1px solid var(--border); border-radius: 14px; padding: 14px; background: var(--surface-2); }
+    .result-stat b { display: block; font-size: 24px; }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      header { align-items: flex-start; flex-direction: column; }
+      .game-shell { margin-top: 14px; }
+    }
+    @media (max-width: 650px) {
+      .app { padding: 18px 12px 32px; }
+      .card { padding: 16px; }
+      .answer-row { grid-template-columns: 30px 1fr 42px; }
+      .correct-toggle { grid-column: 2; justify-content: flex-start; }
+      .remove { grid-column: 3; grid-row: 1 / span 2; }
+      .stats, .result-stats { grid-template-columns: 1fr 1fr 1fr; }
+      .game-card { padding: 22px 16px; }
+      .game-top { align-items: flex-start; flex-direction: column; }
+      .game-progress-wrap { width: 100%; }
+      .score-chip { align-self: flex-end; }
+      .game-option { padding: 14px; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div id="editorScreen" class="editor-screen">
+    <header>
+      <div class="brand">
+        <h1>Multi-answer Quiz</h1>
+        <p>Kérdésenként több helyes válasz is megjelölhető.</p>
+      </div>
+      <div class="toolbar">
+        <button id="startGameBtn" class="success">▶ Játék indítása</button>
+        <button id="newQuestionBtn" class="primary">+ Új kérdés</button>
+        <button id="exportBtn">Export JSON</button>
+        <button id="clearBtn" class="danger">Összes törlése</button>
+      </div>
+    </header>
+
+    <div class="stats">
+      <div class="stat"><b id="qCount">0</b><span>kérdés</span></div>
+      <div class="stat"><b id="aCount">0</b><span>válasz összesen</span></div>
+      <div class="stat"><b id="correctCount">0</b><span>helyes válasz</span></div>
+    </div>
+
+    <div class="layout">
+      <main class="card">
+        <div class="section-title">
+          <h2>Kérdés és válaszok</h2>
+          <span class="small" id="editStatus">Nincs kiválasztott kérdés</span>
+        </div>
+
+        <div class="field-wrap">
+          <label class="field" for="questionInput">Kérdés</label>
+          <textarea id="questionInput" placeholder="Pl. Melyik állítások igazak a JavaScriptre?"></textarea>
+        </div>
+
+        <div class="section-title">
+          <h2>Válaszlehetőségek</h2>
+          <button id="addAnswerBtn">+ Válasz hozzáadása</button>
+        </div>
+        <div id="answers" class="answers"></div>
+        <p class="hint">A „Helyes” jelölővel több opciót is megadhatsz. A játékban egy kérdés 1 pontot ér, ha a játékos pontosan az összes helyes választ jelöli meg.</p>
+
+        <div class="actions" style="margin-top:18px">
+          <button id="saveBtn" class="primary">Kérdés mentése</button>
+          <button id="duplicateBtn">Duplikálás</button>
+          <button id="deleteBtn" class="danger">Kérdés törlése</button>
+        </div>
+      </main>
+
+      <aside class="card">
+        <h2>Kérdések</h2>
+        <div id="quizList" class="quiz-list"></div>
+
+        <div style="height:18px"></div>
+        <h2>Importálás</h2>
+        <div class="import-box">
+          <label class="file-label" for="fileInput">📥 JSON / CSV kiválasztása</label>
+          <input id="fileInput" type="file" accept=".json,.csv,application/json,text/csv" />
+          <div class="import-format">
+            <b>JSON:</b> tömb, például <code>[{"question":"...","answers":[{"text":"A","correct":true}]}]</code><br><br>
+            <b>CSV:</b> fejléc: <code>question,answer,correct</code>. Egy kérdés több sorban szerepelhet.
+          </div>
+        </div>
+
+        <div style="height:20px"></div>
+        <h2>Élő előnézet</h2>
+        <div class="preview">
+          <div class="preview-head">Teszt kitöltő nézete</div>
+          <div class="preview-body">
+            <div id="previewQuestion" class="preview-question">A kérdés itt jelenik meg.</div>
+            <div id="previewOptions"></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div id="gameScreen" class="game-screen">
+    <div class="game-shell">
+      <div class="game-top">
+        <div class="game-progress-wrap">
+          <div class="game-progress-label"><span id="gameProgressText">1 / 1</span><span id="gameHint">Több helyes válasz is lehet.</span></div>
+          <div class="progress-bar"><div id="gameProgressBar"></div></div>
+        </div>
+        <div class="score-chip">Pont: <span id="gameScore">0</span></div>
+      </div>
+
+      <div id="gameQuestionCard" class="card game-card">
+        <p class="small" id="gameQuestionNumber">1. kérdés</p>
+        <h2 id="gameQuestion" class="game-question">Kérdés</h2>
+        <p class="game-note">Jelöld be az összes helyes válaszlehetőséget.</p>
+        <div id="gameOptions" class="game-options"></div>
+        <div id="gameFeedback" class="game-feedback"></div>
+        <div class="game-actions">
+          <button id="quitGameBtn" class="ghost">← Kilépés</button>
+          <div class="game-actions-right">
+            <button id="checkAnswerBtn" class="primary">Válasz ellenőrzése</button>
+            <button id="nextQuestionBtn" class="primary" style="display:none">Következő kérdés →</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="resultCard" class="card result-card" style="display:none">
+        <div class="small">Kvíz vége</div>
+        <div id="resultScore" class="result-score">0 / 0</div>
+        <div class="result-label">helyes kérdés</div>
+        <p id="resultMessage" class="result-message"></p>
+        <div class="result-stats">
+          <div class="result-stat"><b id="resultCorrect">0</b><span>helyes</span></div>
+          <div class="result-stat"><b id="resultWrong">0</b><span>hibás</span></div>
+          <div class="result-stat"><b id="resultPercent">0%</b><span>eredmény</span></div>
+        </div>
+        <div class="actions" style="justify-content:center">
+          <button id="restartGameBtn" class="success">↻ Újra ugyanaz a kvíz</button>
+          <button id="backToEditorBtn">Szerkesztő</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+  const STORAGE_KEY = 'multi-answer-quiz-v1';
+  let questions = loadQuestions();
+  let selectedIndex = questions.length ? 0 : -1;
+  let draft = blankQuestion();
+  let game = null;
+
+  const $ = id => document.getElementById(id);
+
+  function blankQuestion() {
+    return { question: '', answers: [
+      { text: '', correct: false },
+      { text: '', correct: false },
+      { text: '', correct: false }
+    ] };
+  }
+
+  function loadQuestions() {
+    try {
+      const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      return Array.isArray(data) ? data : [];
+    } catch { return []; }
+  }
+
+  function persist() { localStorage.setItem(STORAGE_KEY, JSON.stringify(questions)); }
+
+  function toast(msg) {
+    const el = $('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toast.t);
+    toast.t = setTimeout(() => el.classList.remove('show'), 2400);
+  }
+
+  function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>'"]/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[ch]));
+  }
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function render() {
+    renderAnswers();
+    renderList();
+    renderPreview();
+    const totalAnswers = questions.reduce((sum, q) => sum + q.answers.length, 0);
+    const totalCorrect = questions.reduce((sum, q) => sum + q.answers.filter(a => a.correct).length, 0);
+    $('qCount').textContent = questions.length;
+    $('aCount').textContent = totalAnswers;
+    $('correctCount').textContent = totalCorrect;
+    $('editStatus').textContent = selectedIndex >= 0 ? `Kérdés #${selectedIndex + 1} szerkesztése` : 'Új kérdés';
+    $('startGameBtn').disabled = questions.length === 0;
+  }
+
+  function renderAnswers() {
+    const root = $('answers');
+    root.innerHTML = '';
+    draft.answers.forEach((ans, idx) => {
+      const row = document.createElement('div');
+      row.className = 'answer-row' + (ans.correct ? ' correct' : '');
+      row.innerHTML = `
+        <div class="answer-index">${idx + 1}</div>
+        <input type="text" placeholder="Válaszlehetőség ${idx + 1}" aria-label="Válasz ${idx + 1}">
+        <label class="correct-toggle"><input type="checkbox"> Helyes</label>
+        <button class="remove" title="Válasz törlése" aria-label="Válasz törlése">✕</button>`;
+      const input = row.querySelector('input[type=text]');
+      const checkbox = row.querySelector('input[type=checkbox]');
+      input.value = ans.text;
+      checkbox.checked = !!ans.correct;
+      input.addEventListener('input', e => { ans.text = e.target.value; renderPreview(); });
+      checkbox.addEventListener('change', e => { ans.correct = e.target.checked; renderAnswers(); renderPreview(); });
+      row.querySelector('.remove').addEventListener('click', () => {
+        if (draft.answers.length <= 2) { toast('Legalább két válasz maradjon.'); return; }
+        draft.answers.splice(idx, 1);
+        render();
+      });
+      root.appendChild(row);
+    });
+  }
+
+  function renderList() {
+    const root = $('quizList');
+    root.innerHTML = '';
+    if (!questions.length) {
+      root.innerHTML = '<div class="empty">Még nincs elmentett kérdés.<br>Hozz létre egy újat vagy importálj egy fájlt.</div>';
+      return;
+    }
+    questions.forEach((q, idx) => {
+      const item = document.createElement('div');
+      item.className = 'question-item' + (idx === selectedIndex ? ' active' : '');
+      item.innerHTML = `<div class="q">${escapeHtml(q.question || 'Névtelen kérdés')}</div><div class="meta">${q.answers.length} válasz · ${q.answers.filter(a => a.correct).length} helyes</div>`;
+      item.addEventListener('click', () => {
+        selectedIndex = idx;
+        draft = clone(questions[idx]);
+        $('questionInput').value = draft.question;
+        render();
+      });
+      root.appendChild(item);
+    });
+  }
+
+  function renderPreview() {
+    $('previewQuestion').textContent = draft.question.trim() || 'A kérdés itt jelenik meg.';
+    const root = $('previewOptions');
+    root.innerHTML = '';
+    draft.answers.forEach((a, idx) => {
+      const row = document.createElement('label');
+      row.className = 'preview-option';
+      row.innerHTML = `<input type="checkbox"><span>${escapeHtml(a.text || `Válasz ${idx + 1}`)}</span>`;
+      root.appendChild(row);
+    });
+  }
+
+  function normalizeImported(data) {
+    if (!Array.isArray(data)) return [];
+    return data.map(item => {
+      if (!item || typeof item !== 'object') return null;
+      const q = String(item.question ?? item.questionText ?? '').trim();
+      let answers = Array.isArray(item.answers) ? item.answers : [];
+      answers = answers.map(a => {
+        if (typeof a === 'string') return { text: a.trim(), correct: false };
+        const c = a?.correct;
+        return { text: String(a?.text ?? a?.answer ?? '').trim(), correct: c === true || c === 1 || c === '1' || ['true','igen','yes','x'].includes(String(c).toLowerCase()) };
+      }).filter(a => a.text);
+      return q && answers.length >= 2 ? { question: q, answers } : null;
+    }).filter(Boolean);
+  }
+
+  function parseCSV(text) {
+    const rows = csvRows(text);
+    if (!rows.length) return [];
+    const headers = rows.shift().map(x => x.trim().toLowerCase());
+    const qi = headers.indexOf('question');
+    const ai = headers.indexOf('answer');
+    const ci = headers.indexOf('correct');
+    if (qi < 0 || ai < 0) throw new Error('A CSV fejlécnek question,answer,correct formátumúnak kell lennie.');
+    const map = new Map();
+    rows.forEach(r => {
+      const q = String(r[qi] ?? '').trim(), a = String(r[ai] ?? '').trim();
+      if (!q || !a) return;
+      const correctRaw = String(r[ci] ?? '').trim().toLowerCase();
+      const correct = ['true','1','yes','igen','x'].includes(correctRaw);
+      if (!map.has(q)) map.set(q, []);
+      map.get(q).push({ text: a, correct });
+    });
+    return [...map.entries()].map(([question, answers]) => ({ question, answers })).filter(q => q.answers.length >= 2);
+  }
+
+  function csvRows(text) {
+    const rows = []; let row = [], cell = '', quoted = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i], next = text[i + 1];
+      if (quoted) {
+        if (ch === '"' && next === '"') { cell += '"'; i++; }
+        else if (ch === '"') quoted = false;
+        else cell += ch;
+      } else {
+        if (ch === '"') quoted = true;
+        else if (ch === ',') { row.push(cell); cell = ''; }
+        else if (ch === '\n') { row.push(cell.replace(/\r$/, '')); rows.push(row); row = []; cell = ''; }
+        else cell += ch;
+      }
+    }
+    row.push(cell.replace(/\r$/, ''));
+    if (row.some(Boolean)) rows.push(row);
+    return rows;
+  }
+
+  // ---------------- Editor ----------------
+  $('questionInput').addEventListener('input', e => { draft.question = e.target.value; renderPreview(); });
+  $('addAnswerBtn').addEventListener('click', () => { draft.answers.push({ text: '', correct: false }); renderAnswers(); renderPreview(); });
+
+  $('newQuestionBtn').addEventListener('click', () => {
+    selectedIndex = -1; draft = blankQuestion(); $('questionInput').value = ''; render(); $('questionInput').focus();
+  });
+
+  $('saveBtn').addEventListener('click', () => {
+    draft.question = $('questionInput').value.trim();
+    draft.answers = draft.answers.map(a => ({ text: String(a.text || '').trim(), correct: !!a.correct }));
+    if (!draft.question) { toast('A kérdés nem lehet üres.'); return; }
+    const validAnswers = draft.answers.filter(a => a.text);
+    if (validAnswers.length < 2) { toast('Legalább két kitöltött válasz szükséges.'); return; }
+    if (!validAnswers.some(a => a.correct)) { toast('Jelölj meg legalább egy helyes választ.'); return; }
+    draft.answers = validAnswers;
+    if (selectedIndex >= 0) questions[selectedIndex] = clone(draft);
+    else { questions.push(clone(draft)); selectedIndex = questions.length - 1; }
+    persist(); render(); toast('Kérdés elmentve.');
+  });
+
+  $('duplicateBtn').addEventListener('click', () => {
+    const source = selectedIndex >= 0 ? questions[selectedIndex] : draft;
+    questions.splice(selectedIndex >= 0 ? selectedIndex + 1 : questions.length, 0, clone(source));
+    selectedIndex = selectedIndex >= 0 ? selectedIndex + 1 : questions.length - 1;
+    draft = clone(questions[selectedIndex]); $('questionInput').value = draft.question;
+    persist(); render(); toast('Kérdés duplikálva.');
+  });
+
+  $('deleteBtn').addEventListener('click', () => {
+    if (selectedIndex < 0) { toast('Nincs kiválasztott mentett kérdés.'); return; }
+    if (!confirm('Biztosan törlöd ezt a kérdést?')) return;
+    questions.splice(selectedIndex, 1); persist();
+    if (questions.length) { selectedIndex = Math.min(selectedIndex, questions.length - 1); draft = clone(questions[selectedIndex]); }
+    else { selectedIndex = -1; draft = blankQuestion(); }
+    $('questionInput').value = draft.question; render(); toast('Kérdés törölve.');
+  });
+
+  $('clearBtn').addEventListener('click', () => {
+    if (!questions.length) { toast('Nincs törlendő kérdés.'); return; }
+    if (!confirm('Biztosan törlöd az összes kérdést?')) return;
+    questions = []; persist(); selectedIndex = -1; draft = blankQuestion(); $('questionInput').value = ''; render(); toast('Minden kérdés törölve.');
+  });
+
+  $('exportBtn').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(questions, null, 2)], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob); const a = document.createElement('a');
+    a.href = url; a.download = 'quiz-questions.json'; a.click(); URL.revokeObjectURL(url); toast('JSON export elkészült.');
+  });
+
+  $('fileInput').addEventListener('change', async e => {
+    const file = e.target.files[0]; if (!file) return;
+    try {
+      const text = await file.text();
+      const ext = file.name.toLowerCase().split('.').pop();
+      const imported = ext === 'csv' ? parseCSV(text) : JSON.parse(text);
+      const normalized = normalizeImported(imported);
+      if (!normalized.length) throw new Error('Nem találtam importálható kérdést.');
+      questions = questions.concat(normalized); persist();
+      selectedIndex = questions.length - normalized.length; draft = clone(questions[selectedIndex]); $('questionInput').value = draft.question;
+      render(); toast(`${normalized.length} kérdés importálva.`);
+    } catch (err) {
+      console.error(err); toast('Sikertelen import: ellenőrizd a fájl formátumát.');
+    } finally { e.target.value = ''; }
+  });
+
+  // ---------------- Game mode ----------------
+  function getPlayableQuestions() {
+    return questions.map(q => ({
+      question: q.question,
+      answers: q.answers.filter(a => a.text).map(a => ({ text: a.text, correct: !!a.correct }))
+    })).filter(q => q.question && q.answers.length >= 2 && q.answers.some(a => a.correct));
+  }
+
+  function startGame() {
+    const playable = getPlayableQuestions();
+    if (!playable.length) { toast('Nincs játszható kérdés. Ellenőrizd, hogy van legalább egy helyes válasz.'); return; }
+    game = {
+      questions: shuffle(playable),
+      index: 0,
+      score: 0,
+      checked: false,
+      history: []
+    };
+    $('editorScreen').classList.add('hidden');
+    $('gameScreen').classList.add('active');
+    $('resultCard').style.display = 'none';
+    $('gameQuestionCard').style.display = 'block';
+    renderGameQuestion();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function selectedGameTexts() {
+    return [...$('gameOptions').querySelectorAll('input[type=checkbox]:checked')].map(el => el.dataset.text);
+  }
+
+  function isSameSet(a, b) {
+    if (a.length !== b.length) return false;
+    const A = new Set(a), B = new Set(b);
+    return A.size === B.size && [...A].every(x => B.has(x));
+  }
+
+  function renderGameQuestion() {
+    const q = game.questions[game.index];
+    game.checked = false;
+    $('gameQuestionNumber').textContent = `${game.index + 1}. kérdés`;
+    $('gameQuestion').textContent = q.question;
+    $('gameProgressText').textContent = `${game.index + 1} / ${game.questions.length}`;
+    $('gameProgressBar').style.width = `${((game.index) / game.questions.length) * 100}%`;
+    $('gameScore').textContent = game.score;
+    $('gameFeedback').className = 'game-feedback';
+    $('gameFeedback').textContent = '';
+    $('checkAnswerBtn').style.display = 'inline-block';
+    $('nextQuestionBtn').style.display = 'none';
+    $('checkAnswerBtn').disabled = true;
+
+    const root = $('gameOptions'); root.innerHTML = '';
+    shuffle(q.answers).forEach((a, idx) => {
+      const label = document.createElement('label');
+      label.className = 'game-option';
+      label.innerHTML = `<input type="checkbox" data-text="${escapeHtml(a.text)}"><span class="option-text">${escapeHtml(a.text)}</span>`;
+      const cb = label.querySelector('input');
+      cb.addEventListener('change', () => {
+        label.classList.toggle('selected', cb.checked);
+        $('checkAnswerBtn').disabled = selectedGameTexts().length === 0;
+      });
+      root.appendChild(label);
+    });
+  }
+
+  function checkGameAnswer() {
+    if (!game || game.checked) return;
+    const q = game.questions[game.index];
+    const selected = selectedGameTexts();
+    const correct = q.answers.filter(a => a.correct).map(a => a.text);
+    const perfect = isSameSet(selected, correct);
+    if (perfect) game.score++;
+    game.checked = true;
+    game.history.push({ question: q.question, selected, correct, correctAnswer: perfect });
+
+    [...$('gameOptions').querySelectorAll('.game-option')].forEach(label => {
+      const cb = label.querySelector('input');
+      const text = cb.dataset.text;
+      const isCorrect = correct.includes(text);
+      const isSelected = cb.checked;
+      cb.disabled = true;
+      label.classList.remove('selected');
+      if (isCorrect && isSelected) label.classList.add('correct');
+      else if (!isCorrect && isSelected) label.classList.add('wrong');
+      else if (isCorrect && !isSelected) label.classList.add('missed');
+    });
+
+    const feedback = $('gameFeedback');
+    feedback.className = 'game-feedback show ' + (perfect ? 'good' : 'bad');
+    feedback.innerHTML = perfect
+      ? '<b>✓ Helyes!</b> Pontosan az összes helyes választ jelölted meg.'
+      : `<b>✗ Nem teljesen helyes.</b> A helyes válasz(ok): <strong>${correct.map(escapeHtml).join(', ')}</strong>`;
+    $('gameScore').textContent = game.score;
+    $('checkAnswerBtn').style.display = 'none';
+    $('nextQuestionBtn').style.display = 'inline-block';
+    $('nextQuestionBtn').textContent = game.index === game.questions.length - 1 ? 'Eredmény →' : 'Következő kérdés →';
+  }
+
+  function nextGameQuestion() {
+    if (!game?.checked) return;
+    if (game.index >= game.questions.length - 1) { finishGame(); return; }
+    game.index++;
+    renderGameQuestion();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function finishGame() {
+    const total = game.questions.length;
+    const percent = Math.round((game.score / total) * 100);
+    $('gameProgressText').textContent = `${total} / ${total}`;
+    $('gameProgressBar').style.width = '100%';
+    $('resultScore').textContent = `${game.score} / ${total}`;
+    $('resultCorrect').textContent = game.score;
+    $('resultWrong').textContent = total - game.score;
+    $('resultPercent').textContent = `${percent}%`;
+    $('resultMessage').textContent = percent === 100
+      ? 'Hibátlan eredmény! 🎉'
+      : percent >= 80
+        ? 'Nagyon jó eredmény!'
+        : percent >= 60
+          ? 'Jó alap, egy kis ismétlés még sokat segíthet.'
+          : 'Érdemes újra átnézni az anyagot, majd megpróbálni még egyszer.';
+    $('gameQuestionCard').style.display = 'none';
+    $('resultCard').style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function exitGame() {
+    game = null;
+    $('gameScreen').classList.remove('active');
+    $('editorScreen').classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  $('startGameBtn').addEventListener('click', startGame);
+  $('checkAnswerBtn').addEventListener('click', checkGameAnswer);
+  $('nextQuestionBtn').addEventListener('click', nextGameQuestion);
+  $('quitGameBtn').addEventListener('click', exitGame);
+  $('backToEditorBtn').addEventListener('click', exitGame);
+  $('restartGameBtn').addEventListener('click', startGame);
+
+  // Initial state
+  if (selectedIndex >= 0) {
+    draft = clone(questions[selectedIndex]);
+    $('questionInput').value = draft.question;
+  }
+  render();
+</script>
+</body>
+</html>
